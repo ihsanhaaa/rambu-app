@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Rambu extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'rambus';
     protected $guarded = ['id'];
@@ -56,5 +57,10 @@ class Rambu extends Model
     public function kecamatan()
     {
         return $this->belongsTo(Kecamatan::class);
+    }
+
+    public function latestStatus()
+    {
+        return $this->hasOne(Status::class)->latestOfMany(); // Mengambil status terbaru
     }
 }

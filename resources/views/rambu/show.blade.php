@@ -73,7 +73,7 @@
 
                                         @if($rambu->fotos && $rambu->fotos->isNotEmpty())
                                             @foreach($rambu->fotos as $foto)
-                                                <a class="float-start my-2" href="{{ asset($foto->foto_path) }}" title="{{ $rambu->nama_rambu }}"><img src="{{ asset($foto->foto_path) }}" alt="img-3" width="350"></a>
+                                                <a class="float-start my-2" href="{{ asset($foto->foto_path) }}" title="{{ $rambu->nama_rambu }}"><img src="{{ asset($foto->foto_path) }}" alt="img-3" class="img-fluid"></a>
                                             @endforeach
                                         @else
                                             <p>Tidak ada foto tersedia.</p>

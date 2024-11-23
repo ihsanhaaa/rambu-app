@@ -9,6 +9,7 @@ use App\Models\Rambu;
 use App\Models\Status;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RambuController extends Controller
 {
@@ -45,9 +46,9 @@ class RambuController extends Controller
         foreach ($data['features'] as $feature) {
             $properties = $feature['properties'] ?? [];
 
-            if (isset($properties['descriptio'])) {
+            if (isset($properties['description'])) {
                 // Memparsing `description` untuk mengekstrak informasi
-                $description = $properties['descriptio'];
+                $description = $properties['description'];
                 // dd($description);
                 $parsedData = $this->parseDescription($description);
 
@@ -190,13 +191,31 @@ class RambuController extends Controller
 
     public function showMap()
     {
-        $rambus = Rambu::with(['lokasi', 'fotos' => function($query) {
-            $query->latest()->take(1); // Mengambil foto terbaru
-        }])->get();
+        $rambus = DB::table('rambus')
+            ->leftJoin('lokasis', 'rambus.id', '=', 'lokasis.rambu_id')
+            ->leftJoin('statuses', function ($join) {
+                $join->on('rambus.id', '=', 'statuses.rambu_id')
+                    ->whereRaw('statuses.tgl_temuan = (SELECT MAX(t2.tgl_temuan) FROM statuses t2 WHERE t2.rambu_id = rambus.id)');
+            })
+            // Menambahkan join untuk tabel fotos untuk mengambil foto terbaru
+            ->leftJoin('fotos', function($join) {
+                $join->on('rambus.id', '=', 'fotos.rambu_id')
+                    ->whereRaw('fotos.created_at = (SELECT MAX(fotos.created_at) FROM fotos WHERE fotos.rambu_id = rambus.id)');
+            })
+            ->select(
+                'rambus.*',
+                'lokasis.geojson',
+                'statuses.label_status as latest_status',
+                'statuses.tgl_temuan as latest_tgl_temuan',
+                'statuses.deskripsi as latest_deskripsi',
+                'fotos.foto_path' // Menyertakan foto terbaru
+            )
+            ->get();
+
 
         $kecamatans = Kecamatan::all();
 
-        // dd($markaJalans);
+        // dd($rambus);
 
         return view('rambu.map', compact('rambus', 'kecamatans'));
     }

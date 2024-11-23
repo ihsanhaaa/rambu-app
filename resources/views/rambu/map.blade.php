@@ -100,225 +100,141 @@
 
         <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
         <script>
-            // Inisialisasi peta
-            var map = L.map('map').setView([-0.03568, 109.33296], 13);
+            // Membuat peta
+            const map = L.map('map').setView([-0.05503, 109.3491], 13);
         
-            // Tambahkan tile layer OpenStreetMap
-            var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '© OpenStreetMap'
+            // Menambahkan tile layer ke peta (misalnya OpenStreetMap)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
         
-            // Tambahkan tile layer Esri World Imagery
-            var esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'Tiles © Esri'
-            });
-        
-            // Tambahkan grup layer untuk kategori_rambu
-            var peringatanGroup = L.layerGroup();
-            var laranganGroup = L.layerGroup();
-            var perintahGroup = L.layerGroup();
-            var petunjukGroup = L.layerGroup();
-            var lampu3Group = L.layerGroup();
-            var lampu2Group = L.layerGroup();
-            var lampu1Group = L.layerGroup();
-            var countdownGroup = L.layerGroup();
-        
-            // Tambahkan grup layer untuk jenis_rambu
-            var bersuarGroup = L.layerGroup();
-            var tidakBersuarGroup = L.layerGroup();
-        
-            // Data rambus dari server
+            // Data rambu dari controller
             var rambus = @json($rambus);
+
+            // Layer Group untuk masing-masing status
+            var baikLayer = L.layerGroup().addTo(map);
+            var perluTindakanLayer = L.layerGroup().addTo(map);
+            var rencanaLayer = L.layerGroup().addTo(map);
+            var hilangLayer = L.layerGroup().addTo(map);
+            var defaultLayer = L.layerGroup().addTo(map);
+
+            // Fungsi untuk menentukan ikon berdasarkan status
+            function getIconByStatus(status) {
+                switch (status) {
+                    case 'Baik':
+                        return L.icon({
+                            iconUrl: 'baik-icon.png',
+                            iconSize: [30, 30], // ukuran ikon
+                            iconAnchor: [15, 30], // anchor pada ikon
+                            popupAnchor: [0, -30] // posisi popup
+                        });
+                    case 'Perlu Tindakan':
+                        return L.icon({
+                            iconUrl: 'perlu-tindakan-icon.png',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 30],
+                            popupAnchor: [0, -30]
+                        });
+                    case 'Rencana':
+                        return L.icon({
+                            iconUrl: 'rencana-icon.png',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 30],
+                            popupAnchor: [0, -30]
+                        });
+                    case 'Hilang':
+                        return L.icon({
+                            iconUrl: 'hilang-icon.png',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 30],
+                            popupAnchor: [0, -30]
+                        });
+                    default: // Jika status kosong atau tidak terdefinisi
+                        return L.icon({
+                            iconUrl: 'default-icon.png',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 30],
+                            popupAnchor: [0, -30]
+                        });
+                }
+            }
+
         
-            // Custom icons for each category
-            var peringatanIcon = L.icon({
-                iconUrl: 'placeholder.png',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-
-            var laranganIcon = L.icon({
-                iconUrl: 'alert.png',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-
-            var perintahIcon = L.icon({
-                iconUrl: '/path/to/perintah-icon.png',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-
-            var petunjukIcon = L.icon({
-                iconUrl: 'turn-left.png',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-
-            var lampu3Icon = L.icon({
-                iconUrl: '/path/to/lampu3-icon.png',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-
-            var lampu2Icon = L.icon({
-                iconUrl: '/path/to/lampu2-icon.png',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-
-            var lampu1Icon = L.icon({
-                iconUrl: '/path/to/lampu1-icon.png',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-
-            var countdownIcon = L.icon({
-                iconUrl: '/path/to/countdown-icon.png',
-                iconSize: [32, 32],
-                iconAnchor: [16, 32],
-                popupAnchor: [0, -32]
-            });
-
-            // Iterate over rambus data and add custom icons to each layer
+            // Looping melalui setiap rambu dan menambahkan marker
             rambus.forEach(function(rambu) {
-                if (rambu.lokasi) {
-                    var geojson = JSON.parse(rambu.lokasi.geojson);
+                if (rambu.geojson) {
+                    // Parsing geojson untuk mengambil koordinat (longitude, latitude)
+                    var geojsonData = JSON.parse(rambu.geojson);
+                    var coordinates = geojsonData.coordinates;
+        
+                    // Menentukan ikon berdasarkan status rambu
+                    var icon = getIconByStatus(rambu.latest_status);
 
-                    var detailButton = `<a href="/data-rambu/${rambu.id}" target="_blank" class="btn btn-sm btn-info text-white mx-1"><i class="fas fa-eye"></i> Lihat Detail</a>`;
-                    
-                    var popupContent = `
+                    // Menambahkan marker dengan ikon yang sesuai
+                    var marker = L.marker([coordinates[1], coordinates[0]], { icon: icon }).addTo(map);
+        
+                    // Menyiapkan tombol detail untuk membuka halaman lebih lanjut
+                    const detailButton = `<a href="{{ url('/data-rambu') }}/${rambu.id}" class="btn btn-sm btn-info text-white mx-1" target="_blank"><i class="fas fa-eye"></i> Lihat Detail</a>`;
+        
+                    // Menyiapkan gambar jika ada
+                    var pictureUrl = rambu.foto_path ? `{{ asset('') }}${rambu.foto_path}` : 'Tidak ada foto';
+        
+                    // Menyiapkan konten popup
+                    const popupContent = `
                         <div class="carousel-container mb-3">
-                            ${rambu.fotos && rambu.fotos.length ? rambu.fotos.map(foto => `<img src="/${foto.foto_path}" class="img-thumbnail m-2" style="width:100px;height:100px;">`).join('') : "<p class='text-center'>Tidak ada foto tersedia.</p>"}
+                            ${rambu.foto_path ? `<img src="${pictureUrl}" class="carousel-image" alt="Foto Rambu">` : '<p class="text-center">Tidak ada foto</p>'}
                         </div>
                         <table class="table table-bordered">
-                            <tr><th>Nama Rambu</th><td>${rambu.nama_rambu}</td></tr>
-                            <tr><th>Kategori Rambu</th><td>${rambu.kategori_rambu}</td></tr>
-                            <tr><th>Jenis Rambu</th><td>${rambu.jenis_rambu}</td></tr>
+                            <tr><th>Nama Rambu</th><td>${rambu.nama_rambu || 'N/A'}</td></tr>
+                            <tr><th>Kategori Rambu</th><td>${rambu.kategori_rambu || 'N/A'}</td></tr>
+                            <tr><th>Jenis Rambu</th><td>${rambu.jenis_rambu || 'N/A'}</td></tr>
+                            <tr><th>Harga</th><td>${rambu.harga || 'N/A'}</td></tr>
+                            <tr><th>Status Terbaru</th><td>${rambu.latest_status || 'N/A'}</td></tr>
+                            <tr><th>Tanggal Temuan</th><td>${rambu.latest_tgl_temuan || 'N/A'}</td></tr>
+                            <tr><th>Deskripsi</th><td>${rambu.latest_deskripsi || 'N/A'}</td></tr>
+                            <tr>
+                                <td colspan="2" class="text-center">
+                                    <div class="d-flex justify-content-center gap-2">
+                                        ${detailButton}
+                                    </div>
+                                </td>
+                            </tr>
                         </table>
-                        <div class="text-center mt-3">
-                            ${detailButton} <!-- Menambahkan tombol Detail -->
-                        </div>
                     `;
+        
+                    // Mengikat popup ke marker
+                    marker.bindPopup(popupContent);
 
-                    // Determine the icon based on category
-                    var icon;
-                    switch (rambu.kategori_rambu) {
-                        case "Rambu Peringatan":
-                            icon = peringatanIcon;
-                            peringatanGroup.addLayer(L.geoJSON(geojson, {
-                                pointToLayer: function(feature, latlng) {
-                                    return L.marker(latlng, { icon: icon }).bindPopup(popupContent);
-                                }
-                            }));
+                    // Menambahkan marker ke layer group yang sesuai berdasarkan status
+                    switch (rambu.latest_status) {
+                        case 'Baik':
+                            marker.addTo(baikLayer);
                             break;
-                        case "Rambu Larangan":
-                            icon = laranganIcon;
-                            laranganGroup.addLayer(L.geoJSON(geojson, {
-                                pointToLayer: function(feature, latlng) {
-                                    return L.marker(latlng, { icon: icon }).bindPopup(popupContent);
-                                }
-                            }));
+                        case 'Perlu Tindakan':
+                            marker.addTo(perluTindakanLayer);
                             break;
-                        case "Rambu Perintah":
-                            icon = perintahIcon;
-                            perintahGroup.addLayer(L.geoJSON(geojson, {
-                                pointToLayer: function(feature, latlng) {
-                                    return L.marker(latlng, { icon: icon }).bindPopup(popupContent);
-                                }
-                            }));
+                        case 'Rencana':
+                            marker.addTo(rencanaLayer);
                             break;
-                        case "Rambu Petunjuk":
-                            icon = petunjukIcon;
-                            petunjukGroup.addLayer(L.geoJSON(geojson, {
-                                pointToLayer: function(feature, latlng) {
-                                    return L.marker(latlng, { icon: icon }).bindPopup(popupContent);
-                                }
-                            }));
+                        case 'Hilang':
+                            marker.addTo(hilangLayer);
                             break;
-                        case "Lampu 3 Warna":
-                            icon = lampu3Icon;
-                            lampu3Group.addLayer(L.geoJSON(geojson, {
-                                pointToLayer: function(feature, latlng) {
-                                    return L.marker(latlng, { icon: icon }).bindPopup(popupContent);
-                                }
-                            }));
-                            break;
-                        case "Lampu 2 Warna":
-                            icon = lampu2Icon;
-                            lampu2Group.addLayer(L.geoJSON(geojson, {
-                                pointToLayer: function(feature, latlng) {
-                                    return L.marker(latlng, { icon: icon }).bindPopup(popupContent);
-                                }
-                            }));
-                            break;
-                        case "Lampu 1 Warna":
-                            icon = lampu1Icon;
-                            lampu1Group.addLayer(L.geoJSON(geojson, {
-                                pointToLayer: function(feature, latlng) {
-                                    return L.marker(latlng, { icon: icon }).bindPopup(popupContent);
-                                }
-                            }));
-                            break;
-                        case "Countdown":
-                            icon = countdownIcon;
-                            countdownGroup.addLayer(L.geoJSON(geojson, {
-                                pointToLayer: function(feature, latlng) {
-                                    return L.marker(latlng, { icon: icon }).bindPopup(popupContent);
-                                }
-                            }));
-                            break;
+                        default:
+                            marker.addTo(defaultLayer);
                     }
                 }
             });
-        
-            // Tambahkan grup layer ke peta
-            peringatanGroup.addTo(map);
-            laranganGroup.addTo(map);
-            perintahGroup.addTo(map);
-            petunjukGroup.addTo(map);
-            lampu3Group.addTo(map);
-            lampu2Group.addTo(map);
-            lampu1Group.addTo(map);
-            countdownGroup.addTo(map);
-        
-            bersuarGroup.addTo(map);
-            tidakBersuarGroup.addTo(map);
-        
-            // Tambahkan kontrol layer untuk kategori_rambu dan jenis_rambu
-            var baseLayers = {
-                "OpenStreetMap": osmLayer,
-                "Esri World Imagery": esriLayer
+
+            const overlayMaps = {
+                "Baik": baikLayer,
+                "Perlu Tindakan": perluTindakanLayer,
+                "Rencana": rencanaLayer,
+                "Hilang": hilangLayer,
+                "Status Tidak Tersedia": defaultLayer
             };
-        
-            var kategoriRambuOverlays = {
-                "Rambu Peringatan": peringatanGroup,
-                "Rambu Larangan": laranganGroup,
-                "Rambu Perintah": perintahGroup,
-                "Rambu Petunjuk": petunjukGroup,
-                "Lampu 3 Warna": lampu3Group,
-                "Lampu 2 Warna": lampu2Group,
-                "Lampu 1 Warna": lampu1Group,
-                "Countdown": countdownGroup
-            };
-        
-            var jenisRambuOverlays = {
-                "Bersuar": bersuarGroup,
-                "Tidak Bersuar": tidakBersuarGroup
-            };
-        
-            // Tambahkan kontrol layer ke peta
-            L.control.layers(baseLayers, kategoriRambuOverlays, { collapsed: false, position: 'topright' }).addTo(map);
-            L.control.layers(null, jenisRambuOverlays, { collapsed: false, position: 'topright' }).addTo(map);
-        
+
+            L.control.layers(null, overlayMaps, { collapsed: false }).addTo(map);
+
         </script>
     @endpush
 @endsection

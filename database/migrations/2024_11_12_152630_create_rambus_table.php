@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('jenis_rambu')->nullable();
             $table->string('harga')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 
